@@ -1,6 +1,7 @@
 /* Presentation-only localization: map IDs, coordinates and matching stay unchanged. */
 const I18N = (() => {
  const pairs = {
+ '界面检查':'Menu check','地图搜索':'Map search','小地图追踪':'Minimap tracking','小地图检查':'Minimap check','找回位置':'Relocalization',
  '本局我的编号':'My slot this round','未指定（普通箭头）':'Unspecified (normal arrow)',
  '小队模式请选择自己的 1P／2P／3P，换队后重新核对。选择后打开大地图校准。':'In a squad, select your own 1P / 2P / 3P slot. Check it after changing teams, then open the large map to calibrate.',
  '请打开大地图，按本局编号重新校准人物位置':'Open the large map to calibrate your selected player slot',

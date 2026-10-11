@@ -21,12 +21,12 @@ if OUTPUT.exists(): raise SystemExit('Output exists; choose a new version before
 APP=OUTPUT/'app'; RUNTIME=OUTPUT/'runtime'
 APP.mkdir(parents=True); (RUNTIME/'Lib/site-packages').mkdir(parents=True)
 shutil.copy2(ROOT/'masked_correlation.py',APP/'masked_correlation.py')
-for name in ('recognition_timing.py','frontend_delivery.py'):shutil.copy2(ROOT/name,APP/name)
+for name in ('recognition_timing.py','frontend_delivery.py','scene_gate.py'):shutil.copy2(ROOT/name,APP/name)
 for name in ('feature_matcher.py','local_version.py','field_notes.py','field-notes.js','route-goals.js','hotkeys.py','hotkey-settings.js','native_capture.py','capture_process.py','server.py','image_io.py','matcher.py','loot_detector.py','door_matcher.py','player.py','minimap.py','relocalizer.py','route_planner.py','overlay_bridge.py','overlay_window.py','index.html','app.js','assist.js','i18n.js','style.css'):
     shutil.copy2(ROOT/name,APP/name)
 (APP/'data').mkdir()
 catalog=json.loads((ROOT/'data/catalog.json').read_text(encoding='utf-8'))
-for name in ['catalog.json','player-egg-template.png']+[f'player-number-{slot}-template.png' for slot in (1,2,3)]+[m['id']+ext for m in catalog for ext in ('.json','.webp')]:
+for name in ['catalog.json','player-egg-template.png','screen-team-template.png','screen-inventory-template.png']+[f'player-number-{slot}-template.png' for slot in (1,2,3)]+[m['id']+ext for m in catalog for ext in ('.json','.webp')]:
     shutil.copy2(ROOT/'data'/name,APP/'data'/name)
 (APP/'data/icons').mkdir()
 icon_manifest=json.loads((ROOT/'data/icons/manifest.json').read_text(encoding='utf8'))
@@ -136,6 +136,7 @@ shutil.copy2(ROOT/'本地优化说明.md',OUTPUT/'本地优化说明.md')
 shutil.copy2(ROOT/'checks/识别性能对照.json',OUTPUT/'checks/识别性能对照.json')
 shutil.copy2(ROOT/'checks/实测界面性能对照.json',OUTPUT/'checks/实测界面性能对照.json')
 shutil.copy2(ROOT/'checks/队伍编号定位实测.json',OUTPUT/'checks/队伍编号定位实测.json')
+shutil.copy2(ROOT/'checks/非地图画面性能对照.json',OUTPUT/'checks/非地图画面性能对照.json')
 archive=Path(str(OUTPUT)+'.zip')
 with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as z:
     for file in OUTPUT.rglob('*'):

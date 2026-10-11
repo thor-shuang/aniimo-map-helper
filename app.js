@@ -3,6 +3,7 @@ let catalog=[], current=null, bitmap=null, zoom=1, ox=0, oy=0, enabled=new Set()
 let frame=null, busy=false, timer=null, running=false, history=[], lastSignature=null, generation=0;
 let tracking=null, trackedAt=0, lastKnown=null, confirmedMapId=null;
 let playerSlot=null;
+let recognitionKind='';
 let lastFullFrameAt=-Infinity,previewFrameAt=0;
 let observationSession=Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);
 const cadence=new NavigatorTools.AdaptiveCadence(),journal=new NavigatorTools.RunJournal(),routeFollower=new NavigatorTools.RouteFollower();
@@ -10,14 +11,14 @@ let recoveryActive=false,navEnabled=false,navTarget=null,selectedPoint=null,navP
 let navPending=false,navRetryAt=0,navController=null;
 function writeText(id,value){const el=$(id);if(el.textContent!==value)el.textContent=value;}
 function effectiveInterval(){return $('interval').value==='auto'?cadence.interval:Number($('interval').value)||500;}
-function resetNavigation(){clearRoute();journal.reset();cadence.reset();selectedPoint=null;recoveryActive=false;}
+function resetNavigation(){clearRoute();journal.reset();cadence.reset();recognitionKind='';selectedPoint=null;recoveryActive=false;}
 function syncQuality(){
  const active=result?.position&&result.id===current?.id&&!result.held;
  const state=!realtimeTracking?'off':active?'tracking':lastKnown?(recoveryActive?'recovering':'held'):'uncalibrated';
  const labels={off:'定位已关闭',tracking:'位置已确认',held:'保留上次位置',recovering:'正在重新定位',uncalibrated:'等待地图校准'};
  const el=$('tracking-quality');writeText('tracking-quality',t(labels[state]));if(el.getAttribute?.('data-state')!==state)el.setAttribute('data-state',state);
  writeText('quality-detail',state==='tracking'?t('仅根据已确认画面更新位置'):lastKnown?t('距上次确认')+' '+Math.max(0,Math.floor((Date.now()-trackedAt)/1000))+' s':t('打开游戏大地图以确认本局起点'));
- writeText('performance-status',($('interval').value==='auto'?t('自动调节')+': '+(effectiveInterval()/1000)+' s · ':t('手动间隔')+' · ')+t('本帧处理耗时')+' '+Math.round(cadence.latest)+' ms · '+t('近期平均')+' '+Math.round(cadence.cost)+' ms');
+ writeText('performance-status',(recognitionKind?t(recognitionKind)+' · ':'')+($('interval').value==='auto'?t('自动调节')+': '+(effectiveInterval()/1000)+' s · ':t('手动间隔')+' · ')+t('本帧处理耗时')+' '+Math.round(cadence.latest)+' ms · '+t('近期平均')+' '+Math.round(cadence.cost)+' ms');
 }
 function clearRoute(message=''){routeFollower.reset();navRequest++;navController?.abort();navPending=false;navRetryAt=0;navTarget=null;navPath=[];navStops=[];navUnreachable=[];navOrigin=null;navAt=0;navMessage=message;}
 function refreshRoute(){
@@ -599,6 +600,7 @@ async function identify(forceFull=false){
  }
  const processing=Number(out.native_capture?.processing_ms??out.processing_ms);
  if(Number.isFinite(processing)&&processing>=0)nativeCost=processing;
+ recognitionKind=['menu','blank'].includes(out.recognition_path)?'界面检查':out.method==='minimap'?(out.recovering?'找回位置':out.status==='matched'?'小地图追踪':'小地图检查'):'地图搜索';
  recoveryActive=!!out.recovering;updateLoot(out);
  if(out.method==='minimap'){
    if(out.status==='paused'){showTrackingPaused();draw();return;}
