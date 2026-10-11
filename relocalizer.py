@@ -1,6 +1,7 @@
 """Coarse full-map search proposes positions; detailed tracking confirms them."""
 import cv2
 import numpy as np
+from masked_correlation import MaskedCorrelation
 
 
 def motion_agrees(before, after, displacement, scale):
@@ -44,6 +45,7 @@ class Relocalizer:
         keep=cv2.resize(mask,(60,60),interpolation=cv2.INTER_NEAREST)
         scales=np.linspace(.65,1.55,7) if previous_scale is None else (previous_scale*.94,previous_scale,previous_scale*1.06)
         peaks=[]
+        correlation=MaskedCorrelation(query,keep)
         for scale in scales:
             key=(map_id,round(float(scale),5))
             target=self.references.get(key)
@@ -53,7 +55,7 @@ class Relocalizer:
                 self.references[key]=target
                 if len(self.references)>12:self.references.pop(next(iter(self.references)))
             if min(target.shape)<60:continue
-            score=cv2.matchTemplate(target,query,cv2.TM_CCOEFF_NORMED,mask=keep)
+            score=correlation.match(target)
             score=np.nan_to_num(score,nan=-1,posinf=-1,neginf=-1)
             for _ in range(2):
                 _,fit,_,loc=cv2.minMaxLoc(score)

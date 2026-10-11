@@ -3,6 +3,7 @@ from image_io import read_image, normalize_map_lighting
 import cv2
 import numpy as np
 from pathlib import Path
+from masked_correlation import MaskedCorrelation
 
 try:
     _egg=read_image(str(Path(__file__).resolve().parent/'data/player-egg-template.png'),cv2.IMREAD_GRAYSCALE)
@@ -44,9 +45,10 @@ def detect_egg(image):
         template=cv2.resize(_egg,(width,height))
         mask=np.zeros((height,width),np.uint8)
         cv2.ellipse(mask,(round(width*.43),round(height*.48)),(max(2,round(width*.34)),max(2,round(height*.42))),0,0,360,255,-1)
+        correlation=MaskedCorrelation(template,mask)
         for x0,y0,x1,y1 in regions:
             if x1-x0<width or y1-y0<height:continue
-            scores=cv2.matchTemplate(gray[y0:y1,x0:x1],template,cv2.TM_CCOEFF_NORMED,mask=mask)
+            scores=correlation.match(gray[y0:y1,x0:x1])
             scores=np.nan_to_num(scores,nan=-1,posinf=-1,neginf=-1)
             for _ in range(2):
                 _,score,_,(lx,ly)=cv2.minMaxLoc(scores)

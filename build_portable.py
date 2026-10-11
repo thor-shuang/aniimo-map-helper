@@ -19,6 +19,7 @@ OUTPUT=ROOT/'portable'/f'aniimo_map_helper_v{VERSION}'
 if OUTPUT.exists(): raise SystemExit('Output exists; choose a new version before rebuilding.')
 APP=OUTPUT/'app'; RUNTIME=OUTPUT/'runtime'
 APP.mkdir(parents=True); (RUNTIME/'Lib/site-packages').mkdir(parents=True)
+shutil.copy2(ROOT/'masked_correlation.py',APP/'masked_correlation.py')
 for name in ('feature_matcher.py','local_version.py','field_notes.py','field-notes.js','route-goals.js','hotkeys.py','hotkey-settings.js','native_capture.py','capture_process.py','server.py','image_io.py','matcher.py','loot_detector.py','door_matcher.py','player.py','minimap.py','relocalizer.py','route_planner.py','overlay_bridge.py','overlay_window.py','index.html','app.js','assist.js','i18n.js','style.css'):
     shutil.copy2(ROOT/name,APP/name)
 (APP/'data').mkdir()
