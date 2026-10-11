@@ -213,6 +213,7 @@ class Handler(SimpleHTTPRequestHandler):
                 answer=matcher.match_crop(im,tracking,realtime_tracking,scene,observation)
             else:
                 answer=matcher.match(im,anchor,tracking,outdoor_mode,realtime_tracking=realtime_tracking,observation=observation)
+            answer['processing_ms']=round((time.perf_counter()-inference_started)*1000,2)
             self.json(answer)
         except Exception as e:
             if native_request:

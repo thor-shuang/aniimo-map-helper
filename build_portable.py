@@ -10,6 +10,7 @@ import subprocess
 import sys
 import zipfile
 import re
+sys.path.insert(0,str(Path(__file__).resolve().parent))
 from local_version import local_version
 
 ROOT=Path(__file__).resolve().parent
@@ -127,6 +128,9 @@ shutil.copy2(ROOT/'更新说明.txt',OUTPUT/'更新说明.txt')
 '''.replace('便携版 v0.4.3',f'便携版 v{VERSION}',1),encoding='utf-8-sig')
 shutil.copy2(ROOT/'README_EN.md',OUTPUT/'README_EN.md')
 shutil.copy2(ROOT/'THIRD_PARTY_NOTICES.md',OUTPUT/'THIRD_PARTY_NOTICES.md')
+shutil.copy2(ROOT/'本地优化说明.md',OUTPUT/'本地优化说明.md')
+(OUTPUT/'checks').mkdir()
+shutil.copy2(ROOT/'checks/识别性能对照.json',OUTPUT/'checks/识别性能对照.json')
 archive=Path(str(OUTPUT)+'.zip')
 with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as z:
     for file in OUTPUT.rglob('*'):

@@ -16,7 +16,7 @@ function syncQuality(){
  const labels={off:'定位已关闭',tracking:'位置已确认',held:'保留上次位置',recovering:'正在重新定位',uncalibrated:'等待地图校准'};
  const el=$('tracking-quality');writeText('tracking-quality',t(labels[state]));if(el.getAttribute?.('data-state')!==state)el.setAttribute('data-state',state);
  writeText('quality-detail',state==='tracking'?t('仅根据已确认画面更新位置'):lastKnown?t('距上次确认')+' '+Math.max(0,Math.floor((Date.now()-trackedAt)/1000))+' s':t('打开游戏大地图以确认本局起点'));
- writeText('performance-status',($('interval').value==='auto'?t('自动调节')+': '+(effectiveInterval()/1000)+' s · ':t('手动间隔')+' · ')+t('最近处理耗时')+' '+Math.round(cadence.cost)+' ms');
+ writeText('performance-status',($('interval').value==='auto'?t('自动调节')+': '+(effectiveInterval()/1000)+' s · ':t('手动间隔')+' · ')+t('本帧处理耗时')+' '+Math.round(cadence.latest)+' ms · '+t('近期平均')+' '+Math.round(cadence.cost)+' ms');
 }
 function clearRoute(message=''){routeFollower.reset();navRequest++;navController?.abort();navPending=false;navRetryAt=0;navTarget=null;navPath=[];navStops=[];navUnreachable=[];navOrigin=null;navAt=0;navMessage=message;}
 function refreshRoute(){
@@ -536,8 +536,6 @@ async function tick(epoch=captureEpoch){
   // Yield while an explicit scan or cancelled request finishes; never spin on busy.
   if(busy){delay=50;return;}
   nativeCost=null;await identify();if(epoch!==captureEpoch)return;
-  const live=result?.position&&!result.held?result:null;
-  if(nativeCost!==null)cadence.observe(nativeCost,live?.position,live?.id,Date.now());
   syncQuality();
  }catch(e){if(epoch===captureEpoch)notice('读取画面失败：'+e.message);delay=1000;}
  finally{
@@ -580,7 +578,7 @@ async function requestMatch(payload){
  finally{clearTimeout(timeout);if(matchController===controller)matchController=null;}
 }
 async function identify(forceFull=false){
- if((!frame&&!nativeSession)||busy)return;busy=true;let g=generation;
+ if((!frame&&!nativeSession)||busy)return;busy=true;nativeCost=null;let g=generation;
  try{
  let {payload,sig}=capturePayload(forceFull),out=await requestMatch(payload);if(g!==generation)return;
  if(out.capture_wait){
@@ -596,6 +594,8 @@ async function identify(forceFull=false){
  if(out.requires_full_frame){
    ({payload,sig}=capturePayload(true));out=await requestMatch(payload);if(g!==generation)return;
  }
+ const processing=Number(out.native_capture?.processing_ms??out.processing_ms);
+ if(Number.isFinite(processing)&&processing>=0)nativeCost=processing;
  recoveryActive=!!out.recovering;updateLoot(out);
  if(out.method==='minimap'){
    if(out.status==='paused'){showTrackingPaused();draw();return;}
@@ -630,7 +630,11 @@ async function identify(forceFull=false){
  if(!result&&leader){$('result').textContent='候选预览 · '+leader.name;$('reason').textContent+=' 当前仅预览候选，确认该地图可点击候选卡片开始追踪。';}
  if(!realtimeTracking){if(result&&!result.held)$('position-status').textContent='大地图位置已更新 · 实时定位已关闭';else showTrackingPaused();}
  draw();
- }catch(e){if(g!==generation)return;nativeRetryAfter=performance.now()+1000;if(nativeSession&&e.status===400)stop();recoveryActive=false;result=null;holdPosition();notice('识别暂不可用：'+e.message);draw();}finally{busy=false;}
+ }catch(e){if(g!==generation)return;nativeRetryAfter=performance.now()+1000;if(nativeSession&&e.status===400)stop();recoveryActive=false;result=null;holdPosition();notice('识别暂不可用：'+e.message);draw();}finally{
+  busy=false;
+  if(g===generation&&nativeCost!==null){const live=result?.position&&!result.held?result:null;cadence.observe(nativeCost,live?.position,live?.id,Date.now());}
+  syncQuality();
+ }
 }
 $('once').onclick=()=>identify(true);$('fit').onclick=()=>{if(isSea()){seaView='all';$('sea-region').value='all';}fit();};
 for(const r of seaRegions){const o=document.createElement('option');o.value=r.id;o.textContent=r.name;$('sea-region').append(o);}
