@@ -35,6 +35,7 @@ class Matcher:
             self.error = None
             self.ready = False
             read_image(ROOT/'data/player-egg-template.png')
+            for slot in (1,2,3):read_image(ROOT/f'data/player-number-{slot}-template.png')
             for m in json.loads((ROOT/'data/catalog.json').read_text(encoding='utf8')):
                 if not (m['id'].startswith('sanctum-') or m['id']=='egg-heist'): continue
                 im = read_image(str(ROOT / m['image'].lstrip('/')))
@@ -69,7 +70,7 @@ class Matcher:
         return answer
 
     @recognition
-    def match(self, im, anchor=None, tracking=None, outdoor_mode='egg-heist', realtime_tracking=True, observation=None):
+    def match(self, im, anchor=None, tracking=None, outdoor_mode='egg-heist', realtime_tracking=True, observation=None, player_slot=None):
         # Uniform frames cannot contain map geometry; skip costly icon searches.
         if float(np.max(cv2.meanStdDev(im)[1]))<1:
             return {'status':'unknown','candidates':[], 'player':None,'position_source':None,'reason':'画面信息不足，请打开地图并扩大可见区域。'}
@@ -78,12 +79,14 @@ class Matcher:
             return self.match_minimap(sample,tracking,realtime_tracking,im,observation)
         answer=self._match(im,anchor,outdoor_mode)
         # 只有存在地图候选时才搜索人物，避免组队、背包等界面扫描十四档蛋图标。
-        player=detect_player(im) if anchor is None and answer.get('candidates') else None
+        player=detect_player(im,player_slot) if anchor is None and answer.get('candidates') else None
         region=answer.pop('_query_region',[0.,0.,1.,1.])
         if player is not None:
             self._place_player(answer,player['normalized'],region)
         answer['player']=player
         answer['position_source']='manual' if anchor is not None else ('auto' if player else None)
+        if answer.get('candidates') and anchor is None and player is None:
+            answer['reason']+=' 小队模式请核对“本局我的编号”，再打开大地图校准位置。'
         for candidate in answer.get('candidates',[]):
             candidate['position_source']=answer['position_source']
         return answer

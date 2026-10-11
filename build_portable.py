@@ -26,7 +26,7 @@ for name in ('feature_matcher.py','local_version.py','field_notes.py','field-not
     shutil.copy2(ROOT/name,APP/name)
 (APP/'data').mkdir()
 catalog=json.loads((ROOT/'data/catalog.json').read_text(encoding='utf-8'))
-for name in ['catalog.json','player-egg-template.png']+[m['id']+ext for m in catalog for ext in ('.json','.webp')]:
+for name in ['catalog.json','player-egg-template.png']+[f'player-number-{slot}-template.png' for slot in (1,2,3)]+[m['id']+ext for m in catalog for ext in ('.json','.webp')]:
     shutil.copy2(ROOT/'data'/name,APP/'data'/name)
 (APP/'data/icons').mkdir()
 icon_manifest=json.loads((ROOT/'data/icons/manifest.json').read_text(encoding='utf8'))
@@ -135,6 +135,7 @@ shutil.copy2(ROOT/'本地优化说明.md',OUTPUT/'本地优化说明.md')
 (OUTPUT/'checks').mkdir()
 shutil.copy2(ROOT/'checks/识别性能对照.json',OUTPUT/'checks/识别性能对照.json')
 shutil.copy2(ROOT/'checks/实测界面性能对照.json',OUTPUT/'checks/实测界面性能对照.json')
+shutil.copy2(ROOT/'checks/队伍编号定位实测.json',OUTPUT/'checks/队伍编号定位实测.json')
 archive=Path(str(OUTPUT)+'.zip')
 with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as z:
     for file in OUTPUT.rglob('*'):

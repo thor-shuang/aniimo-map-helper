@@ -7,6 +7,8 @@ import unittest
 from unittest.mock import patch
 import urllib.request
 import urllib.error
+import base64
+import cv2
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import numpy as np
@@ -76,6 +78,18 @@ class DeliveryChecks(unittest.TestCase):
             with self.assertRaises(urllib.error.HTTPError) as caught:
                 urllib.request.urlopen(request,timeout=5)
             self.assertEqual(caught.exception.code,409)
+            encoded=base64.b64encode(cv2.imencode('.png',np.zeros((32,32,3),np.uint8))[1]).decode()
+            with patch.object(server.matcher,'match',return_value={'status':'unknown','candidates':[]}) as matching:
+                for slot in (1,2,3,None):
+                    request=urllib.request.Request(base+'/api/match',data=json.dumps({'image':encoded,'player_slot':slot}).encode(),
+                                                   headers={'Content-Type':'application/json'})
+                    with urllib.request.urlopen(request,timeout=5) as response:self.assertEqual(response.status,200)
+                    self.assertEqual(matching.call_args.kwargs['player_slot'],slot)
+                request=urllib.request.Request(base+'/api/match',data=json.dumps({'image':encoded,'player_slot':4}).encode(),
+                                               headers={'Content-Type':'application/json'})
+                with self.assertRaises(urllib.error.HTTPError) as invalid:
+                    urllib.request.urlopen(request,timeout=5)
+                self.assertEqual(invalid.exception.code,400)
             with urllib.request.urlopen(base+'/api/performance',timeout=5) as response:
                 self.assertIn('frames',json.load(response))
         finally:

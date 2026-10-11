@@ -2,6 +2,7 @@ const $=id=>document.getElementById(id), cap=$('capture'), cc=cap.getContext('2d
 let catalog=[], current=null, bitmap=null, zoom=1, ox=0, oy=0, enabled=new Set(), result=null, mapBounds=null, mapLoadVersion=0;
 let frame=null, busy=false, timer=null, running=false, history=[], lastSignature=null, generation=0;
 let tracking=null, trackedAt=0, lastKnown=null, confirmedMapId=null;
+let playerSlot=null;
 let lastFullFrameAt=-Infinity,previewFrameAt=0;
 let observationSession=Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);
 const cadence=new NavigatorTools.AdaptiveCadence(),journal=new NavigatorTools.RunJournal(),routeFollower=new NavigatorTools.RouteFollower();
@@ -416,7 +417,7 @@ function markerPosition(p,z,scale=1){
  return overlap?{...p,x:p.x+26*scale/z,y:p.y+12*scale/z}:p;
 }
 function drawMarker(p,style,ctx,zoom,markerScale=1){if(style.point){ctx.save();if(current&&journal.picked(current.id,p))ctx.globalAlpha=.28;const placed=markerPosition(p,zoom,markerScale);if(placed!==p){ctx.strokeStyle='#ffe9b099';ctx.lineWidth=1/zoom;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(placed.x,placed.y);ctx.stroke();}drawOriginalPoint(placed,style,ctx,zoom,markerScale);ctx.restore();return;}const {color}=style;const size=style.size*1.4*markerScale;ctx.save();ctx.translate(p.x,p.y);ctx.scale(1/zoom,1/zoom);ctx.shadowColor='#0009';ctx.shadowBlur=3;ctx.fillStyle='#101b25b8';ctx.strokeStyle=color;ctx.lineWidth=1.15;ctx.beginPath();ctx.arc(0,0,size/2,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.shadowBlur=0;const s=(size-5)/24;ctx.scale(s,s);ctx.translate(-12,-12);ctx.lineWidth=1.9;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke(iconPaths[style.icon]);ctx.restore();if(style.label){ctx.save();ctx.font=`600 ${11*Math.max(.75,markerScale)/zoom}px sans-serif`;ctx.lineWidth=3/zoom;ctx.strokeStyle='#0b141e';ctx.strokeText(t(style.label),p.x+(size/2+5)/zoom,p.y+4/zoom);ctx.fillStyle=color;ctx.fillText(t(style.label),p.x+(size/2+5)/zoom,p.y+4/zoom);ctx.restore();}}
-function newRun(){confirmedMapId=null;resetNavigation();lastFullFrameAt=-Infinity;resetLoot();seaView='auto';$('sea-region').value='auto';history=[];lastSignature=null;result=null;tracking=null;lastKnown=null;trackedAt=0;generation++;$('position-status').textContent='先开大地图校准，再用小地图追踪';$('result').textContent='新一局 · 等待主门附近地图';$('reason').textContent='从黄门进入后打开地图，探索更多房间以缩小候选。';$('candidates').replaceChildren();draw();}
+function newRun(){playerSlot=null;$('player-slot').value='';confirmedMapId=null;resetNavigation();lastFullFrameAt=-Infinity;resetLoot();seaView='auto';$('sea-region').value='auto';history=[];lastSignature=null;result=null;tracking=null;lastKnown=null;trackedAt=0;generation++;$('position-status').textContent='先开大地图校准，再用小地图追踪';$('result').textContent='新一局 · 等待主门附近地图';$('reason').textContent='从黄门进入后打开地图，探索更多房间以缩小候选。';$('candidates').replaceChildren();draw();}
 function notice(text){$('reason').textContent=text;}
 async function loadMap(id){
  const requestVersion=++mapLoadVersion;if(current?.id!==id){clearRoute();selectedPoint=null;}
@@ -570,7 +571,7 @@ function capturePayload(forceFull=false){
 }
 
 async function requestMatch(payload){
- payload={...payload,client_version:window.ANIIMO_BUILD};
+ payload={...payload,client_version:window.ANIIMO_BUILD,player_slot:playerSlot};
  const controller=new AbortController();matchController=controller;
  const timeout=setTimeout(()=>controller.abort(),15000);
  try{
@@ -639,6 +640,14 @@ async function identify(forceFull=false){
  }
 }
 $('once').onclick=()=>identify(true);$('fit').onclick=()=>{if(isSea()){seaView='all';$('sea-region').value='all';}fit();};
+$('player-slot').onchange=()=>{
+ playerSlot=['1','2','3'].includes($('player-slot').value)?Number($('player-slot').value):null;
+ generation++;tracking=null;lastKnown=null;result=null;history=[];lastSignature=null;lastFullFrameAt=-Infinity;
+ journal.pause();routeFollower.pause();clearRoute('人物编号已更新，请重新校准。');
+ $('position-status').textContent='请打开大地图，按本局编号重新校准人物位置';
+ $('reason').textContent='只定位选定的队伍编号；换队或编号变化后请重新选择。';
+ draw();syncQuality();
+};
 for(const r of seaRegions){const o=document.createElement('option');o.value=r.id;o.textContent=r.name;$('sea-region').append(o);}
 $('sea-region').onchange=e=>{seaView=e.target.value;fit();};
 $('region-follow').onclick=()=>{seaView='auto';$('sea-region').value='auto';fit();if(!result?.position||result.id!==current?.id)notice('请先打开游戏大地图定位；也可以在分区列表手动选择。');};

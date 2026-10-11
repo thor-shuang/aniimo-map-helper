@@ -184,6 +184,9 @@ class Handler(SimpleHTTPRequestHandler):
             if tracking and tracking.get('id')=='egg-heist-team-mode':tracking=None
             realtime_tracking=d.get('realtime_tracking',True)
             if not isinstance(realtime_tracking,bool):raise ValueError('无效实时定位选项')
+            player_slot=d.get('player_slot')
+            if player_slot is not None and (type(player_slot) is not int or player_slot not in (1,2,3)):
+                raise ValueError('本局人物编号必须为 1P、2P 或 3P。')
             observation=d.get('observation')
             if observation is not None:
                 import math,re
@@ -210,7 +213,7 @@ class Handler(SimpleHTTPRequestHandler):
                         if not answer.get('requires_full_frame'):
                             native_meta['processing_ms']=round((time.perf_counter()-inference_started)*1000,2)
                             answer['native_capture']=native_meta;return self.json(answer)
-                answer=matcher.match(im,anchor,tracking,outdoor_mode,realtime_tracking=realtime_tracking,observation=observation)
+                answer=matcher.match(im,anchor,tracking,outdoor_mode,realtime_tracking=realtime_tracking,observation=observation,player_slot=player_slot)
                 native_meta['signature']=np.rint(cv2.resize(im,(32,32)).sum(axis=2)/24).astype(int).ravel().tolist()
                 native_meta['processing_ms']=round((time.perf_counter()-inference_started)*1000,2)
                 answer['native_capture']=native_meta;return self.json(answer)
@@ -228,7 +231,7 @@ class Handler(SimpleHTTPRequestHandler):
                     if scene is None or max(scene.shape[:2])>800:raise ValueError('无效掉落预览')
                 answer=matcher.match_crop(im,tracking,realtime_tracking,scene,observation)
             else:
-                answer=matcher.match(im,anchor,tracking,outdoor_mode,realtime_tracking=realtime_tracking,observation=observation)
+                answer=matcher.match(im,anchor,tracking,outdoor_mode,realtime_tracking=realtime_tracking,observation=observation,player_slot=player_slot)
             answer['processing_ms']=round((time.perf_counter()-inference_started)*1000,2)
             self.json(answer)
         except Exception as e:
