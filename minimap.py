@@ -9,6 +9,7 @@ import cv2
 import numpy as np
 from relocalizer import Relocalizer, motion_agrees
 from masked_correlation import MaskedCorrelation
+from recognition_timing import stage
 
 
 class MinimapTracker:
@@ -29,6 +30,7 @@ class MinimapTracker:
         return MinimapTracker.extract_crop(crop)
 
     @staticmethod
+    @stage('小地图画面检查')
     def extract_crop(crop):
         """Validate the HUD on every crop; a missing HUD requests a full frame."""
         crop=cv2.resize(crop,(200,200))
@@ -63,6 +65,7 @@ class MinimapTracker:
         dungeon_color=float(np.mean(hsv[:,:,1][interior]<55))>.72
         return gray,mask,point,dungeon_color
 
+    @stage('小地图匹配')
     def match(self, sample, map_id=None, previous=None, previous_scale=None, observation=None, search_elapsed=0):
         missing={'status':'unknown','method':'minimap','candidates':[], 'position_source':None}
         if not map_id:

@@ -6,6 +6,7 @@ from pathlib import Path
 from image_io import read_image, normalize_map_lighting
 import cv2
 import numpy as np
+from recognition_timing import stage
 
 class DoorMatcher:
     def __init__(self, root):
@@ -24,6 +25,7 @@ class DoorMatcher:
         n,l,stats,cent=cv2.connectedComponentsWithStats(mask)
         return [(s,c) for s,c in zip(stats[1:],cent[1:]) if s[4]>=min_area and .4<s[2]/s[3]<2.2]
 
+    @stage('两门证据提取')
     def prepare(self, image):
         """提取两门和地形证据，供快速路径与完整搜索共用。"""
         h0,w0=image.shape[:2]
@@ -98,6 +100,7 @@ class DoorMatcher:
         yellow=min(np.linalg.norm(expected[0]-prepared.cy-[0,prepared.sy[3]*offset]) for offset in offsets)
         return bool(yellow<=tolerance and np.linalg.norm(expected[1]-prepared.cb)<=tolerance)
 
+    @stage('两门地形搜索')
     def match(self, image, anchor=None, prepared=None):
         prepared=prepared if prepared is not None else self.prepare(image)
         if prepared is None:return None

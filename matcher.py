@@ -8,6 +8,7 @@ from player import detect_player
 from minimap import MinimapTracker
 from loot_detector import detect_rainbow_beams
 from feature_matcher import FeatureMatcher
+from recognition_timing import recognition, stage
 
 ROOT = Path(__file__).resolve().parent
 cv2.setNumThreads(2)
@@ -49,6 +50,7 @@ class Matcher:
         except Exception as e:
             self.error = str(e)
 
+    @recognition
     def match_crop(self, im, tracking=None, realtime_tracking=True, scene=None, observation=None):
         sample=self.minimap.extract_crop(im)
         if sample is None:
@@ -66,6 +68,7 @@ class Matcher:
         answer['loot_observations']=detect_rainbow_beams(scene) if scene is not None else []
         return answer
 
+    @recognition
     def match(self, im, anchor=None, tracking=None, outdoor_mode='egg-heist', realtime_tracking=True, observation=None):
         # Uniform frames cannot contain map geometry; skip costly icon searches.
         if float(np.max(cv2.meanStdDev(im)[1]))<1:
@@ -73,14 +76,27 @@ class Matcher:
         sample=self.minimap.extract(im)
         if sample is not None:
             return self.match_minimap(sample,tracking,realtime_tracking,im,observation)
-        player=detect_player(im) if anchor is None else None
-        effective_anchor=anchor if anchor is not None else (player['normalized'] if player else None)
-        answer=self._match(im,effective_anchor,outdoor_mode)
+        answer=self._match(im,anchor,outdoor_mode)
+        # 只有存在地图候选时才搜索人物，避免组队、背包等界面扫描十四档蛋图标。
+        player=detect_player(im) if anchor is None and answer.get('candidates') else None
+        region=answer.pop('_query_region',[0.,0.,1.,1.])
+        if player is not None:
+            self._place_player(answer,player['normalized'],region)
         answer['player']=player
         answer['position_source']='manual' if anchor is not None else ('auto' if player else None)
         for candidate in answer.get('candidates',[]):
             candidate['position_source']=answer['position_source']
         return answer
+
+    @staticmethod
+    def _place_player(answer,point,region):
+        """沿用已经求出的配准变换，不重复识别地形。"""
+        x0,y0,x1,y1=region
+        fraction=(np.asarray(point,dtype=float)-[x0,y0])/[x1-x0,y1-y0]
+        for candidate in answer.get('candidates',[]):
+            polygon=np.asarray(candidate['polygon'],dtype=float)
+            position=polygon[0]+fraction[0]*(polygon[1]-polygon[0])+fraction[1]*(polygon[3]-polygon[0])
+            candidate['position']=position.tolist()
 
     def _match(self, im, anchor=None, outdoor_mode='egg-heist'):
         if not self.ready: return {'status':'loading', 'indexed': len(self.maps), 'error':self.error}
@@ -95,6 +111,8 @@ class Matcher:
             door_result = self.doors.match(im, anchor, prepared) if prepared is not None else None
             if door_result and door_result['candidates'][0]['score'] >= 35:
                 door_result['recognition_path'] = 'doors'
+                door_result['_query_region']=[prepared.x0/prepared.w,prepared.y0/prepared.h,
+                                               prepared.x1/prepared.w,prepared.y1/prepared.h]
                 return door_result
             if feature_result is None:feature_result = self._match_features(im, anchor)
             feature_result['recognition_path'] = 'features'
@@ -109,6 +127,7 @@ class Matcher:
                 and result.get('feature_inlier_margin',0)>2)
         return bool(strong and self.doors.agrees_with_features(prepared,best))
 
+    @stage('地图特征匹配')
     def _match_features(self, im, anchor=None):
         h,w = im.shape[:2]
         qs = min(1., 1000/max(h,w))

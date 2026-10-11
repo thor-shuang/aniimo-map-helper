@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 from pathlib import Path
 from masked_correlation import MaskedCorrelation
+from recognition_timing import stage
 
 try:
     _egg=read_image(str(Path(__file__).resolve().parent/'data/player-egg-template.png'),cv2.IMREAD_GRAYSCALE)
@@ -63,6 +64,7 @@ def detect_egg(image):
     if score<.86 or any(score-other[0]<.06 for other in picks[1:] if np.linalg.norm(point-other[1])>max(box[2:])):return None
     return {'point':point.tolist(),'normalized':(point/[w,h]).tolist(),'box':box,'kind':'egg'}
 
+@stage('人物图标定位')
 def detect_player(image):
     image=normalize_map_lighting(image)
     egg=detect_egg(image)

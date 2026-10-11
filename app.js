@@ -500,6 +500,7 @@ async function connectionFailure(error){
  }
 }
 async function nativeRequest(payload){
+ payload={...payload,client_version:window.ANIIMO_BUILD};
  let response;
  try{response=await fetch('/api/native',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:AbortSignal.timeout(15000)});}
  catch(e){
@@ -569,6 +570,7 @@ function capturePayload(forceFull=false){
 }
 
 async function requestMatch(payload){
+ payload={...payload,client_version:window.ANIIMO_BUILD};
  const controller=new AbortController();matchController=controller;
  const timeout=setTimeout(()=>controller.abort(),15000);
  try{

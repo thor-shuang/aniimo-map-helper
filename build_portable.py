@@ -21,6 +21,7 @@ if OUTPUT.exists(): raise SystemExit('Output exists; choose a new version before
 APP=OUTPUT/'app'; RUNTIME=OUTPUT/'runtime'
 APP.mkdir(parents=True); (RUNTIME/'Lib/site-packages').mkdir(parents=True)
 shutil.copy2(ROOT/'masked_correlation.py',APP/'masked_correlation.py')
+for name in ('recognition_timing.py','frontend_delivery.py'):shutil.copy2(ROOT/name,APP/name)
 for name in ('feature_matcher.py','local_version.py','field_notes.py','field-notes.js','route-goals.js','hotkeys.py','hotkey-settings.js','native_capture.py','capture_process.py','server.py','image_io.py','matcher.py','loot_detector.py','door_matcher.py','player.py','minimap.py','relocalizer.py','route_planner.py','overlay_bridge.py','overlay_window.py','index.html','app.js','assist.js','i18n.js','style.css'):
     shutil.copy2(ROOT/name,APP/name)
 (APP/'data').mkdir()
@@ -59,6 +60,8 @@ launcher_source=ROOT/'build'/'本地启动器.cs'
 launcher_source.parent.mkdir(exist_ok=True)
 launcher_text,count=re.subn(r'const string AppVersion = "[^"]+";',f'const string AppVersion = "{VERSION}";',(ROOT/'portable_launcher.cs').read_text(encoding='utf-8'))
 if count!=1:raise SystemExit('未找到唯一的启动器版本字段，请检查上游变更。')
+if 'new ProcessStartInfo(Url)' not in launcher_text:raise SystemExit('启动器打开页面的方式已变化，请检查上游变更。')
+launcher_text=launcher_text.replace('new ProcessStartInfo(Url)','new ProcessStartInfo(Url + "/?build=" + Uri.EscapeDataString(AppVersion))')
 launcher_source.write_text(launcher_text,encoding='utf-8-sig')
 for output,defines in [('启动助手.exe',[]),('退出助手.exe',['/define:STOP'])]:
     subprocess.run([str(compiler),'/nologo','/target:winexe','/reference:System.Windows.Forms.dll','/reference:System.Management.dll','/out:'+str(OUTPUT/output),*defines,str(launcher_source),str(ROOT/'exit_all.cs')],check=True)
@@ -131,6 +134,7 @@ shutil.copy2(ROOT/'THIRD_PARTY_NOTICES.md',OUTPUT/'THIRD_PARTY_NOTICES.md')
 shutil.copy2(ROOT/'本地优化说明.md',OUTPUT/'本地优化说明.md')
 (OUTPUT/'checks').mkdir()
 shutil.copy2(ROOT/'checks/识别性能对照.json',OUTPUT/'checks/识别性能对照.json')
+shutil.copy2(ROOT/'checks/实测界面性能对照.json',OUTPUT/'checks/实测界面性能对照.json')
 archive=Path(str(OUTPUT)+'.zip')
 with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as z:
     for file in OUTPUT.rglob('*'):

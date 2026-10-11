@@ -2,6 +2,7 @@
 import cv2
 import numpy as np
 from masked_correlation import MaskedCorrelation
+from recognition_timing import stage
 
 
 def motion_agrees(before, after, displacement, scale):
@@ -38,6 +39,7 @@ class Relocalizer:
     def __init__(self):
         self.references={}
 
+    @stage('全图找回位置')
     def propose(self,sample,map_id,reference,previous_scale=None):
         gray,mask,point,_=sample
         shrink=.3
