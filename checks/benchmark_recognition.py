@@ -62,7 +62,7 @@ def main():
             '结果':[]}
     for name,image in cases:
         cv2.setNumThreads(2)
-        before,cpu=run_timed(lambda:original.match(image),1)
+        before,cpu=run_timed(lambda:original.match(image),args.repeats)
         cv2.setNumThreads(2)
         after,optimized=run_timed(lambda:matcher.match(image),args.repeats)
         row={'样例':name,'原版':cpu,'优化版':optimized,'原版状态':before['status'],
