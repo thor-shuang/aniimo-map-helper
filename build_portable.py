@@ -9,14 +9,17 @@ import shutil
 import subprocess
 import sys
 import zipfile
+import re
+from local_version import local_version
 
 ROOT=Path(__file__).resolve().parent
 SOURCE_RUNTIME=Path(sys.executable).parent
-OUTPUT=ROOT/'portable'/'aniimo_map_helper_v0.4.3'
+VERSION=local_version('0.4.3')
+OUTPUT=ROOT/'portable'/f'aniimo_map_helper_v{VERSION}'
 if OUTPUT.exists(): raise SystemExit('Output exists; choose a new version before rebuilding.')
 APP=OUTPUT/'app'; RUNTIME=OUTPUT/'runtime'
 APP.mkdir(parents=True); (RUNTIME/'Lib/site-packages').mkdir(parents=True)
-for name in ('field_notes.py','field-notes.js','route-goals.js','hotkeys.py','hotkey-settings.js','native_capture.py','capture_process.py','server.py','image_io.py','matcher.py','loot_detector.py','door_matcher.py','player.py','minimap.py','relocalizer.py','route_planner.py','overlay_bridge.py','overlay_window.py','index.html','app.js','assist.js','i18n.js','style.css'):
+for name in ('feature_matcher.py','local_version.py','field_notes.py','field-notes.js','route-goals.js','hotkeys.py','hotkey-settings.js','native_capture.py','capture_process.py','server.py','image_io.py','matcher.py','loot_detector.py','door_matcher.py','player.py','minimap.py','relocalizer.py','route_planner.py','overlay_bridge.py','overlay_window.py','index.html','app.js','assist.js','i18n.js','style.css'):
     shutil.copy2(ROOT/name,APP/name)
 (APP/'data').mkdir()
 catalog=json.loads((ROOT/'data/catalog.json').read_text(encoding='utf-8'))
@@ -49,8 +52,14 @@ for name,digest,size in csv.reader(io.StringIO(record.read_text(encoding='utf-8'
 with record.open('w',encoding='utf-8',newline='') as output:
     csv.writer(output,lineterminator='\n').writerows(rows)
 compiler=Path('C:/Windows/Microsoft.NET/Framework64/v4.0.30319/csc.exe')
+# 保留上游启动器源码，只在构建副本中写入本地修订号。
+launcher_source=ROOT/'build'/'本地启动器.cs'
+launcher_source.parent.mkdir(exist_ok=True)
+launcher_text,count=re.subn(r'const string AppVersion = "[^"]+";',f'const string AppVersion = "{VERSION}";',(ROOT/'portable_launcher.cs').read_text(encoding='utf-8'))
+if count!=1:raise SystemExit('未找到唯一的启动器版本字段，请检查上游变更。')
+launcher_source.write_text(launcher_text,encoding='utf-8-sig')
 for output,defines in [('启动助手.exe',[]),('退出助手.exe',['/define:STOP'])]:
-    subprocess.run([str(compiler),'/nologo','/target:winexe','/reference:System.Windows.Forms.dll','/reference:System.Management.dll','/out:'+str(OUTPUT/output),*defines,str(ROOT/'portable_launcher.cs'),str(ROOT/'exit_all.cs')],check=True)
+    subprocess.run([str(compiler),'/nologo','/target:winexe','/reference:System.Windows.Forms.dll','/reference:System.Management.dll','/out:'+str(OUTPUT/output),*defines,str(launcher_source),str(ROOT/'exit_all.cs')],check=True)
 DIAGNOSTICS=OUTPUT/'diagnostics'
 (DIAGNOSTICS/'upstream/windows_capture').mkdir(parents=True)
 for name in ('run_diagnostics.py','environment.ps1','说明.txt'):
@@ -114,7 +123,7 @@ shutil.copy2(ROOT/'更新说明.txt',OUTPUT/'更新说明.txt')
 
 地图及点位来源：Wikily /《伊莫》。相关素材的权利归原权利人所有。
 第三方运行库许可保留在 runtime/LICENSE.txt 及 runtime/Lib/site-packages 下的 *.dist-info 目录。
-''',encoding='utf-8-sig')
+'''.replace('便携版 v0.4.3',f'便携版 v{VERSION}',1),encoding='utf-8-sig')
 shutil.copy2(ROOT/'README_EN.md',OUTPUT/'README_EN.md')
 shutil.copy2(ROOT/'THIRD_PARTY_NOTICES.md',OUTPUT/'THIRD_PARTY_NOTICES.md')
 archive=Path(str(OUTPUT)+'.zip')

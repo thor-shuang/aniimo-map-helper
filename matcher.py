@@ -7,6 +7,7 @@ from door_matcher import DoorMatcher
 from player import detect_player
 from minimap import MinimapTracker
 from loot_detector import detect_rainbow_beams
+from feature_matcher import FeatureMatcher
 
 ROOT = Path(__file__).resolve().parent
 cv2.setNumThreads(2)
@@ -20,6 +21,7 @@ class Matcher:
         self.sift = cv2.SIFT_create(nfeatures=4500, contrastThreshold=0.02)
         self.doors = None
         self.minimap = MinimapTracker(ROOT)
+        self.features = FeatureMatcher()
 
     @staticmethod
     def gray(im):
@@ -42,6 +44,7 @@ class Matcher:
                 self.maps.append((m, scale, np.float32([k.pt for k in kp]), des))
             if not self.maps: raise ValueError('No map images found. Extract the complete ZIP again.')
             self.doors = DoorMatcher(ROOT)
+            self.features.prepare(self.maps)
             self.ready = True
         except Exception as e:
             self.error = str(e)
@@ -91,12 +94,12 @@ class Matcher:
             kp, des = self.sift.detectAndCompute(self.gray(small), None)
             if des is None or len(kp)<12: return {'status':'unknown','candidates':[], 'reason':'画面信息不足，请打开地图并扩大可见区域。'}
             pts = np.float32([k.pt for k in kp])
-            bf = cv2.BFMatcher()
+            query = self.features.query(des)
             results = []
             for m, scale, target, desc in self.maps:
                 if m['id'].startswith('egg-heist') and m['id']!='egg-heist':continue
                 if desc is None: continue
-                pairs = bf.knnMatch(des, desc, k=2)
+                pairs = self.features.knn_match(query, m['id'], desc)
                 good = [a for a,b in pairs if a.distance < .70*b.distance]
                 # Multiple query features must not vote for one reference feature.
                 unique = {}

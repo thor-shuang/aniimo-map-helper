@@ -10,6 +10,7 @@ from route_planner import RoutePlanner
 from native_capture import windows, small_preview
 from capture_process import IsolatedCapture
 from field_notes import FieldNotes
+from local_version import local_version
 
 ROOT=Path(__file__).resolve().parent
 PORT=int(os.environ.get('ANIIMO_PORT','18731'))
@@ -58,7 +59,7 @@ class Handler(SimpleHTTPRequestHandler):
         except ConnectionError: pass
     def do_GET(self):
         path=urllib.parse.urlparse(self.path).path
-        if path=='/api/status': return self.json({'ready':matcher.ready,'indexed':len(matcher.maps),'error':matcher.error,'version':'0.4.3'})
+        if path=='/api/status': return self.json({'ready':matcher.ready,'indexed':len(matcher.maps),'error':matcher.error,'version':local_version('0.4.3'),'compute':matcher.features.status()})
         if path=='/api/overlay': return self.json(overlay.status())
         if path=='/api/overlay/hotkeys': return self.json(overlay.status()['hotkeys'])
         if path=='/api/overlay/frame':
